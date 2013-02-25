@@ -4,6 +4,7 @@ namespace TrainingWheels\Course;
 use TrainingWheels\Log\Log;
 use TrainingWheels\Common\Observable;
 use TrainingWheels\User\User;
+use TrainingWheels\Store\DataStore;
 use Exception;
 
 class Course extends Observable {
@@ -22,6 +23,13 @@ class Course extends Observable {
   // Resource config.
   protected $resource_config;
 
+  // Reference to the DataStore.
+  protected $data;
+
+  public function __construct(DataStore $data) {
+    $this->data = $data;
+  }
+
   public function setPlugins(array $plugins) {
     $this->plugins = $plugins;
   }
@@ -30,8 +38,19 @@ class Course extends Observable {
     return $this->plugins;
   }
 
+  public function getID() {
+    return $this->course_id;
+  }
+
   public function setResourceConfig(array $resource_config) {
     $this->resource_config = $resource_config;
+  }
+
+  /**
+   * Helper to log messages from this class.
+   */
+  private function log($message, $params) {
+    Log::log($message, L_INFO, 'actions', array('layer' => 'app', 'source' => 'Course', 'params' => $params));
   }
 
   /**
@@ -39,7 +58,8 @@ class Course extends Observable {
    */
   protected function userFactory($user_name) {
     $user_id = $this->course_id . '-' . $user_name;
-    $user_obj = new User($this->env, $user_name, $user_id);
+    $user_obj = new User($this->env, $this->data, $user_name, $user_id);
+    Log::log('Building user', L_DEBUG, 'actions', array('layer' => 'app', 'source' => 'UserFactory', 'params' => 'user_id=' . $user_id));
 
     // Each user object must receive resource objects too. These are created
     // based on the course's resources config.
@@ -51,7 +71,8 @@ class Course extends Observable {
       }
       $plugin = $this->plugins[$res['plugin']];
 
-      $user_res[$key] = $plugin->resourceFactory($res['type'], $this->env, $res['title'], $user_name, $this->course_name, $user_res_id, $res);
+      $user_res[$key] = $plugin->resourceFactory($res['type'], $this->env, $this->data, $res['title'], $user_name, $this->course_name, $user_res_id, $res);
+      Log::log('Building resource', L_DEBUG, 'actions', array('layer' => 'app', 'source' => 'UserFactory', 'params' => 'res_id=' . $user_res_id));
     }
     $user_obj->resources = $user_res;
 
@@ -89,12 +110,13 @@ class Course extends Observable {
    */
   public function usersGet($users = '*') {
     $users = $this->userNormalizeParam($users);
+    $this->log('Get users', 'users=' . implode(',', $users));
     $output = array();
     if (!empty($users)) {
       foreach ($users as $user_name) {
-        $user_obj = $this->userFactory($user_name);
-        if ($user_obj->getExists()) {
-          $output[$user_name] = $this->userGet($user_name, FALSE);
+        $user = $this->userGet($user_name, FALSE);
+        if ($user) {
+          $output[$user_name] = $user;
         }
       }
     }
@@ -105,6 +127,7 @@ class Course extends Observable {
    * Get info on a single user.
    */
   public function userGet($user_name, $full = TRUE) {
+    $this->log('Get user', 'user=' . $user_name);
     $user_obj = $this->userFactory($user_name);
     $user_info = $user_obj->get($full);
     if ($user_info) {
@@ -119,6 +142,7 @@ class Course extends Observable {
    */
   public function usersCreate($users) {
     $users = $this->userNormalizeParam($users);
+    $this->log('Create users', implode(',', $users));
     foreach ($users as $user) {
       $user_obj = $this->userFactory($user);
       if ($user_obj->getExists()) {
@@ -136,6 +160,7 @@ class Course extends Observable {
    */
   public function usersDelete($users) {
     $users = $this->userNormalizeParam($users);
+    $this->log('Delete users', implode(',', $users));
     foreach ($users as $user) {
       $user_obj = $this->userFactory($user);
       if (!$user_obj->getExists()) {
@@ -151,6 +176,7 @@ class Course extends Observable {
    */
   public function usersResourcesSync($source_user, $target_users, $resources) {
     $target_users = $this->userNormalizeParam($target_users);
+    $this->log('Sync resources', 'source_user=' . $source_user . ' target_users=' . implode(',', $target_users) . ' resources=' . $resources);
 
     // The source of the sync.
     $source_user_obj = $this->userFactory($source_user);
@@ -168,6 +194,7 @@ class Course extends Observable {
    */
   public function usersResourcesCreate($users, $resources) {
     $users = $this->userNormalizeParam($users);
+    $this->log('Create resources', 'users=' . implode(',', $users) . ' resources=' . $resources);
 
     foreach ($users as $user_name) {
       $user_obj = $this->userFactory($user_name);
@@ -182,6 +209,7 @@ class Course extends Observable {
    */
   public function usersResourcesDelete($users, $resources) {
     $users = $this->userNormalizeParam($users);
+    $this->log('Delete resources', 'users=' . implode(',', $users) . ' resources=' . $resources);
 
     foreach ($users as $user_name) {
       $user_obj = $this->userFactory($user_name);

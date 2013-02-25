@@ -94,7 +94,9 @@ class Environment {
       if ($this->debug) {
         $refl = new ReflectionFunction($func);
         $namespace = $refl->getNamespaceName();
-        $full_name = $namespace . '::' . $method;
+        $plugin_name_pieces = explode('\\', $namespace);
+        $plugin_name = $plugin_name_pieces[2];
+        $full_name = $plugin_name . '::' . $method;
         if ($refl->getNumberOfRequiredParameters() > count($args)) {
           throw new Exception("Too few parameters passed to \"$full_name\"");
         }
@@ -108,7 +110,8 @@ class Environment {
             }
           }
         }
-        Log::log($full_name, L_DEBUG);
+
+        Log::log('Call env function', L_DEBUG, 'actions', array('layer' => 'app', 'source' => 'Environment', 'params' => $full_name));
       }
 
       return call_user_func_array($func, $args);

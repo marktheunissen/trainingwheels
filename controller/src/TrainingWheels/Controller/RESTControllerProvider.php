@@ -36,6 +36,7 @@ class RESTControllerProvider implements ControllerProviderInterface {
     $parseID = function ($id) use ($app) {
       $parts = explode('-', $id);
       if (isset($parts[0]) && isset($parts[1])) {
+        Log::log('Parse REST request', L_INFO, 'actions', array('layer' => 'user', 'source' => 'Web', 'params' => 'course_id=' . $parts[0] . ' users=' . $parts[1]));
         $course = $app['tw.course_factory']->get($parts[0]);
         return array(
           'course' => $course,
@@ -59,6 +60,8 @@ class RESTControllerProvider implements ControllerProviderInterface {
      * Retrieve a user.
      */
     $controllers->get('/users/{user}', function ($user) use ($app) {
+      Log::log('GET /user', L_INFO, 'actions', array('layer' => 'user', 'source' => 'Web'));
+
       if (!$user) {
         return $app->json(array('messages' => 'Invalid user ID requested, ensure format is courseid-username, e.g. 1-instructor.'), HTTP_BAD_REQUEST);
       }
@@ -86,6 +89,7 @@ class RESTControllerProvider implements ControllerProviderInterface {
      * Create a user.
      */
     $controllers->post('/user_summaries', function (Request $request) use ($app) {
+      Log::log('POST /user_summaries', L_INFO, 'actions', array('layer' => 'user', 'source' => 'Web'));
       $user = $request->request->get('user_summary');
       $course_id = $user['course_id'];
       $user_name = $user['user_name'];
@@ -107,6 +111,7 @@ class RESTControllerProvider implements ControllerProviderInterface {
      * Delete a user.
      */
     $controllers->delete('/user/{user}', function ($user) use ($app) {
+      Log::log('DELETE /user', L_INFO, 'actions', array('layer' => 'user', 'source' => 'Web'));
       if (!$user) {
         return $app->json(array('messages' => 'Invalid user ID requested, ensure format is courseid-username, e.g. 1-instructor.'), HTTP_BAD_REQUEST);
       }
@@ -122,6 +127,7 @@ class RESTControllerProvider implements ControllerProviderInterface {
      * Retrieve course summaries.
      */
     $controllers->get('/course_summaries', function() use ($app) {
+      Log::log('GET /course_summaries', L_INFO, 'actions', array('layer' => 'user', 'source' => 'Web'));
       $courses = $app['tw.course_factory']->getAllSummaries();
       $return = new stdClass;
       $return->course_summaries = $courses;
@@ -132,6 +138,7 @@ class RESTControllerProvider implements ControllerProviderInterface {
      * Create a course.
      */
     $controllers->post('/course_summaries', function (Request $request) use ($app) {
+      Log::log('POST /course_summaries', L_INFO, 'actions', array('layer' => 'user', 'source' => 'Web'));
       $newCourse = $request->request->get('course_summary');
       $savedCourse = $app['tw.course_factory']->save($newCourse);
 
@@ -145,6 +152,7 @@ class RESTControllerProvider implements ControllerProviderInterface {
      * Retrieve a course.
      */
     $controllers->get('/courses/{id}', function ($id) use ($app) {
+      Log::log('GET /courses', L_INFO, 'actions', array('layer' => 'user', 'source' => 'Web'));
       $course = $app['tw.course_factory']->get($id);
 
       if (!$course) {
@@ -171,6 +179,7 @@ class RESTControllerProvider implements ControllerProviderInterface {
      * Create a job.
      */
     $controllers->post('/jobs', function (Request $request) use ($app) {
+      Log::log('POST /jobs', L_INFO, 'actions', array('layer' => 'user', 'source' => 'Web'));
       $job = (object)$request->request->get('job');
       $job->params = (array)json_decode($job->params);
       $job = $app['tw.job_factory']->save($job);
@@ -188,6 +197,7 @@ class RESTControllerProvider implements ControllerProviderInterface {
      * Delete a job.
      */
     $controllers->delete('/jobs/{id}', function ($id) use ($app) {
+      Log::log('DELETE /jobs', L_INFO, 'actions', array('layer' => 'user', 'source' => 'Web'));
       if (!$id) {
         return $app->json(array('messages' => 'Invalid job ID requested.'), HTTP_BAD_REQUEST);
       }
@@ -205,6 +215,7 @@ class RESTControllerProvider implements ControllerProviderInterface {
      * Retrieve course build information.
      */
     $controllers->get('/course_build', function () use ($app) {
+      Log::log('GET /course_build', L_INFO, 'actions', array('layer' => 'user', 'source' => 'Web'));
       $pluginManager = new PluginManager();
       return $app->json($pluginManager->getFormBuild(), HTTP_OK);
     });

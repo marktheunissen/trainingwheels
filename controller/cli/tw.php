@@ -45,6 +45,9 @@ use TrainingWheels\Console\UserCreate;
 use TrainingWheels\Console\UserDelete;
 use TrainingWheels\Console\UserRetrieve;
 use TrainingWheels\Console\KeyCreate;
+use TrainingWheels\Console\LogClear;
+use TrainingWheels\Console\MongoCLI;
+use TrainingWheels\Console\ObjectCacheClear;
 
 $console = new Application();
 $console->add(new CourseProvision($app['tw.job_factory']));
@@ -55,5 +58,8 @@ $console->add(new ResourceCreate($app['tw.job_factory']));
 $console->add(new ResourceDelete($app['tw.job_factory']));
 $console->add(new ResourceSync($app['tw.job_factory']));
 $console->add(new KeyCreate($app['tw.config']));
+$console->add(new LogClear($app['tw.log']));
+$console->add(new MongoCLI($app['tw.config']));
+$console->add(new ObjectCacheClear($app['tw.datastore']));
 
 $console->run();

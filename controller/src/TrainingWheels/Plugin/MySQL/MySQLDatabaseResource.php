@@ -4,6 +4,7 @@ namespace TrainingWheels\Plugin\MySQL;
 use TrainingWheels\Resource\Resource;
 use TrainingWheels\Common\Util;
 use TrainingWheels\Environment\Environment;
+use TrainingWheels\Store\DataStore;
 use Exception;
 
 class MySQLDatabaseResource extends Resource {
@@ -17,10 +18,10 @@ class MySQLDatabaseResource extends Resource {
   /**
    * Constructor.
    */
-  public function __construct(Environment $env, $title, $user_name, $course_name, $res_id, $data) {
-    parent::__construct($env, $title, $user_name, $course_name, $res_id);
+  public function __construct(Environment $env, DataStore $data, $title, $user_name, $course_name, $res_id, $config) {
+    parent::__construct($env, $data, $title, $user_name, $course_name, $res_id);
     $this->course_name = $course_name;
-    $this->dump_path = "/twhome/$user_name/$course_name/" . $data['dump_path'];
+    $this->dump_path = "/twhome/$user_name/$course_name/" . $config['dump_path'];
 
     $this->cachePropertiesAdd(array('db_name', 'mysql_username', 'mysql_password'));
     $this->cacheBuild($res_id);
@@ -61,9 +62,8 @@ class MySQLDatabaseResource extends Resource {
    * Return bool for whether the database exists in the environment.
    */
   public function getExists() {
-    if (!$this->exists) {
+    if (!isset($this->exists)) {
       $this->exists = $this->env->mySQLDBExists($this->genSafeDBName());
-      $this->cacheSave();
     }
     return $this->exists;
   }
@@ -72,6 +72,7 @@ class MySQLDatabaseResource extends Resource {
    * Create the database.
    */
   public function create() {
+    parent::create();
     if ($this->getExists()) {
       throw new Exception("Attempting to create a MySQLDatabaseResource that already exists.");
     }
@@ -82,13 +83,13 @@ class MySQLDatabaseResource extends Resource {
 
     $this->env->mySQLUserDBCreate($this->mysql_username, $this->mysql_password, $this->db_name, $this->dump_path);
     $this->credentialsCreate();
-    $this->cacheSave();
   }
 
   /**
    * Delete the database.
    */
   public function delete() {
+    parent::delete();
     if (!$this->getExists()) {
       throw new Exception("Attempting to delete a MySQLDatabaseResource that does not exist.");
     }
@@ -98,7 +99,6 @@ class MySQLDatabaseResource extends Resource {
     $this->mysql_username = FALSE;
     $this->db_name = FALSE;
     $this->exists = FALSE;
-    $this->cacheSave();
   }
 
   /**
@@ -140,7 +140,6 @@ class MySQLDatabaseResource extends Resource {
   public function getDBName() {
     if (!isset($this->db_name)) {
       $this->db_name = $this->genSafeDBName();
-      $this->cacheSave();
     }
     return $this->db_name;
   }
@@ -150,9 +149,8 @@ class MySQLDatabaseResource extends Resource {
    * be done on construction.
    */
   public function getUserName() {
-    if (empty($this->mysql_username)) {
+    if (!isset($this->mysql_username)) {
       $this->mysql_username = $this->genSafeDBName();
-      $this->cacheSave();
     }
     return $this->mysql_username;
   }
@@ -161,14 +159,13 @@ class MySQLDatabaseResource extends Resource {
    * Lazy load the password from the credentials.
    */
   public function getPasswd() {
-    if (empty($this->mysql_password)) {
+    if (!isset($this->mysql_password)) {
       if ($this->env->fileExists("/twhome/$this->user_name/.my.cnf")) {
         $cnf = $this->env->fileGetContents("/twhome/$this->user_name/.my.cnf");
 
         if (!empty($cnf)) {
           $ini = parse_ini_string($cnf);
           $this->mysql_password = $ini['pass'];
-          $this->cacheSave();
         }
       }
     }
@@ -191,6 +188,7 @@ class MySQLDatabaseResource extends Resource {
    * Sync to a target.
    */
   public function syncTo(MySQLDatabaseResource $target) {
+    parent::syncTo();
     // Create a backup.
     if ($target->getExists()) {
       $target->dumpTo('tmp');
