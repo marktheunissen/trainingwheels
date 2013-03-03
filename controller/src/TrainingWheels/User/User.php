@@ -4,6 +4,9 @@ namespace TrainingWheels\User;
 use TrainingWheels\Common\CachedObject;
 use TrainingWheels\Common\Util;
 use TrainingWheels\Environment\Environment;
+use TrainingWheels\Log\Log;
+use TrainingWheels\Store\DataStore;
+
 use Exception;
 
 class User extends CachedObject {
@@ -38,15 +41,22 @@ class User extends CachedObject {
    * may also be because someone has cleared the cache.
    *
    */
-  public function __construct(Environment $env, $user_name, $user_id) {
+  public function __construct(Environment $env, DataStore $data, $user_name, $user_id) {
     // Save the data that is passed to this object.
     $this->env = $env;
     $this->user_name = $user_name;
     $this->user_id = $user_id;
 
-    parent::__construct();
+    parent::__construct($data);
     $this->cachePropertiesAdd(array('exists', 'password'));
     $this->cacheBuild($user_id);
+  }
+
+  /**
+   * Helper to log messages from this class.
+   */
+  private function log($message) {
+    Log::log($message, L_INFO, 'actions', array('layer' => 'app', 'source' => 'User', 'params' => "user=" . $this->getName()));
   }
 
   /**
@@ -63,10 +73,10 @@ class User extends CachedObject {
     if ($this->getExists()) {
       throw new Exception("Attempting to create a user that already exists");
     }
+    $this->log('Create user');
     $this->exists = TRUE;
     $this->password = Util::passwdGen();
     $this->env->userCreate($this->user_name, $this->password);
-    $this->cacheSave();
   }
 
   /**
@@ -83,19 +93,18 @@ class User extends CachedObject {
         $res->delete();
       }
     }
+    $this->log('Delete user');
     $this->env->userDelete($this->user_name);
     $this->exists = FALSE;
     $this->password = FALSE;
-    $this->cacheSave();
   }
 
   /**
    * Return bool for whether the user exists in the environment.
    */
   public function getExists() {
-    if (!$this->exists) {
+    if (!isset($this->exists)) {
       $this->exists = $this->env->userExists($this->user_name);
-      $this->cacheSave();
     }
     return $this->exists;
   }
@@ -104,6 +113,7 @@ class User extends CachedObject {
    * Get the resources.
    */
   public function resourcesGetAll() {
+    $this->log('Get all resources');
     return $this->resources;
   }
 
@@ -111,6 +121,7 @@ class User extends CachedObject {
    * Get a resource.
    */
   public function resourceGet($name) {
+    $this->log('Get resource ' . $name);
     return isset($this->resources[$name]) ? $this->resources[$name] : FALSE;
   }
 
@@ -118,6 +129,7 @@ class User extends CachedObject {
    * Create the resources.
    */
   public function resourcesCreate($resources) {
+    $this->log('Create resources');
     if ($resources == '*' || $resources == array('*')) {
       foreach ($this->resources as $res) {
         $res->create();
@@ -139,6 +151,7 @@ class User extends CachedObject {
    * Delete the resources.
    */
   public function resourcesDelete($resources) {
+    $this->log('Delete resources');
     if ($resources == '*' || $resources == array('*')) {
       foreach ($this->resources as $res) {
         $res->delete();
@@ -160,6 +173,7 @@ class User extends CachedObject {
    * Sync resources to another user.
    */
   public function syncTo(User $target, $resources) {
+    $this->log('Sync to target user');
     $target_resources = $target->resourcesGetAll();
 
     foreach ($this->resources as $key => $res) {
@@ -179,7 +193,6 @@ class User extends CachedObject {
       $password = $this->env->userPasswdGet($this->user_name);
       if ($password) {
         $this->password = $password;
-        $this->cacheSave();
       }
       else {
         throw new Exception("Attempting to get the password for a user that doesn't exist");
@@ -203,6 +216,7 @@ class User extends CachedObject {
    *   if $full is FALSE, skip resources.
    */
   public function get($full = TRUE) {
+    $this->log('Get user');
     if ($this->getExists()) {
       $user = array(
         'user_name' => $this->user_name,

@@ -3,6 +3,8 @@
 namespace TrainingWheels\Resource;
 use TrainingWheels\Common\CachedObject;
 use TrainingWheels\Environment\Environment;
+use TrainingWheels\Log\Log;
+use TrainingWheels\Store\DataStore;
 
 abstract class Resource extends CachedObject {
 
@@ -24,22 +26,48 @@ abstract class Resource extends CachedObject {
   // Whether it exists yet.
   protected $exists;
 
-  abstract public function create();
-  abstract public function delete();
   abstract public function getExists();
 
   /**
    * Constructor.
    */
-  public function __construct(Environment $env, $title, $user_name, $course_name, $res_id) {
+  public function __construct(Environment $env, DataStore $data, $title, $user_name, $course_name, $res_id) {
     $this->env = $env;
     $this->title = $title;
     $this->user_name = $user_name;
     $this->course_name = $course_name;
     $this->res_id = $res_id;
 
-    parent::__construct();
+    parent::__construct($data);
     $this->cachePropertiesAdd(array('exists'));
+  }
+
+  /**
+   * Helper to log messages from this class.
+   */
+  private function log($message) {
+    Log::log($message, L_INFO, 'actions', array('layer' => 'app', 'source' => 'Resource', 'params' => "res_id=$this->res_id"));
+  }
+
+  /**
+   * Create resource.
+   */
+  public function create() {
+    $this->log('Create resource');
+  }
+
+  /**
+   * Delete resource.
+   */
+  public function delete() {
+    $this->log('Delete resource');
+  }
+
+  /**
+   * Sync resource to a target.
+   */
+  public function syncTo() {
+    $this->log('SyncTo target');
   }
 
   /**
@@ -54,6 +82,7 @@ abstract class Resource extends CachedObject {
    * Get the information about the state of this resource.
    */
   public function get() {
+    $this->log('Get resource');
     $info = array(
       'type' => $this->getType(),
       'exists' => $this->getExists(),

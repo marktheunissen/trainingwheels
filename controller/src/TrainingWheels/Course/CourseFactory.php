@@ -6,20 +6,31 @@ use TrainingWheels\Conn\LocalServerConn;
 use TrainingWheels\Conn\SSHServerConn;
 use TrainingWheels\Conn\KeyManager;
 use TrainingWheels\Environment\Environment;
+use TrainingWheels\Log\Log;
 use Exception;
 
 class CourseFactory extends Factory {
 
   /**
+   * Helper function to format log entries eminating from this class.
+   */
+  private function log($message, $params) {
+    Log::log($message, L_DEBUG, 'actions', array('layer' => 'app', 'source' => 'CourseFactory', 'params' => $params));
+  }
+
+  /**
    * Create Course object given a course id.
    */
   public function get($course_id) {
+    Log::log('Building course object', L_INFO, 'actions', array('layer' => 'app', 'source' => 'CourseFactory', 'params' => "course_id=$course_id"));
+
     $params = $this->data->find('course', array('id' => (int)$course_id));
 
     if ($params) {
       // Create a Connection object.
       if ($params['host'] == 'localhost') {
         $conn = new LocalServerConn(TRUE);
+        $this->log('Local connection success', 'host=localhost');
       }
       else {
         $key_manager = new KeyManager($this->config['base_path']);
@@ -30,10 +41,11 @@ class CourseFactory extends Factory {
         if (!$conn->connect()) {
           throw new Exception("Unable to connect/login to server " . $params['host'] . " on port " . $params['port'] . " as user " . $params['user']);
         }
+        $this->log('SSH connection success', 'host=' . $params['host']);
       }
 
       // Create a Course object.
-      $course = new Course();
+      $course = new Course($this->data);
       $course->course_id = $course_id;
       $course->title = $params['title'];
       $course->description = $params['description'];
@@ -52,6 +64,7 @@ class CourseFactory extends Factory {
       if ($course->env_type != 'ubuntu') {
         throw new Exception("Only 'ubuntu' environments are supported right now");
       }
+      $this->log('Building environment', 'type=' . $course->env_type);
 
       // Build the Plugins associated with this course.
       if (!isset($params['plugins'])) {
@@ -88,6 +101,8 @@ class CourseFactory extends Factory {
       $plugin->mixinEnvironment($course->env, $course->env_type);
 
       $plugin->registerCourseObservers($course);
+
+      $this->log('Building plugin', 'type=' . $key);
     }
     $course->setPlugins($plugins);
   }
